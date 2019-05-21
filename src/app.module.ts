@@ -5,16 +5,25 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { ConfigModule } from './config/config.module';
+import { ConfigService } from './config/config.service';
 
 @Module({
   imports: [
+    ConfigModule,
     UsersModule,
-    TypeOrmModule.forRoot({
-      type: 'mongodb',
-      url: 'mongodb://hoc081098:hoc081098@ds157956.mlab.com:57956/test-nestjs',
-      synchronize: true,
-      useNewUrlParser: true,
-      entities: [join(__dirname, '**/*.entity{.ts,.js}')],
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        return {
+          type: 'mongodb',
+          url: configService.get('MONGODB_URL'),
+          synchronize: true,
+          useNewUrlParser: true,
+          entities: [join(__dirname, '**/*.entity{.ts,.js}')],
+        };
+      },
     }),
     AuthModule,
   ],

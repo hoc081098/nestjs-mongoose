@@ -8,16 +8,9 @@ import { JwtStrategy } from './auth.stragety';
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
-    JwtModule.register({
-      secretOrPrivateKey: 'secretKey',
-      signOptions: {
-        expiresIn: 3600,
-      },
-    }),
-    UsersModule,
     UsersModule,
   ],
   providers: [AuthService, JwtStrategy],
-  exports: [PassportModule, AuthService],
+  exports: [PassportModule, AuthService, JwtStrategy],
 })
 export class AuthModule { }

@@ -6,12 +6,11 @@ import { UserEntity } from 'src/users/user.entity';
 
 @Injectable()
 export class AuthService {
-  validateUser(payload: JwtPayload): UserEntity | undefined | null {
-    throw new Error("Method not implemented.");
-  }
-
   constructor(
     private readonly userService: UsersService,
-    private readonly jwtService: JwtService,
   ) { }
+
+  validateUser(payload: JwtPayload): Promise<UserEntity | undefined> {
+    return this.userService.findById(payload.id);
+  }
 }

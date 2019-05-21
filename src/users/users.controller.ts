@@ -1,36 +1,12 @@
-import { Controller, Get, Post, Body, HttpStatus, HttpCode, HttpException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpStatus, HttpCode, HttpException, UseGuards, Req, Put } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { IsEmail, MinLength } from 'class-validator';
 import { AuthGuard } from '@nestjs/passport';
+import { Usr as User } from './user.decorator';
+import { UserEntity } from './user.entity';
+import { RegisterUserDto } from './dto/register.dto';
+import { LoginUserDto } from './dto/login.dto';
+import { UpdateUserDto } from './dto/update.dto';
 
-class GetUserDto {
-  readonly id: string;
-  readonly username: string;
-  readonly email: string;
-}
-
-// tslint:disable-next-line: max-classes-per-file
-class RegisterUserDto {
-  @MinLength(3)
-  readonly username: string;
-
-  @IsEmail()
-  readonly email: string;
-
-  @MinLength(6)
-  readonly password: string;
-}
-
-// tslint:disable-next-line: max-classes-per-file
-class LoginUserDto {
-  @IsEmail()
-  readonly email: string;
-
-  @MinLength(6)
-  readonly password: string;
-}
-
-// tslint:disable-next-line: max-classes-per-file
 @Controller('users')
 export class UsersController {
 
@@ -39,7 +15,7 @@ export class UsersController {
   ) { }
 
   @Get()
-  async findAll(): Promise<GetUserDto[]> {
+  async findAll() {
     const users = await this.userService.findAll();
     return users.map(user => {
       return {
@@ -52,10 +28,10 @@ export class UsersController {
 
   @Post('login')
   @HttpCode(200)
-  async login(@Body() body: LoginUserDto): Promise<any> {
+  async login(@Body() body: LoginUserDto) {
     const { email, password } = body;
 
-    const user = await this.userService.findByEmail(email, password);
+    const user = await this.userService.login(email, password);
     if (user === 'NOT_FOUND') {
       throw new HttpException(
         `User with email '${email}' not found`,
@@ -68,19 +44,43 @@ export class UsersController {
         HttpStatus.UNAUTHORIZED,
       );
     }
-
-    console.log({ user, body });
     return user;
   }
 
   @Post('register')
-  register(@Body() user: RegisterUserDto) {
-    return this.userService.create(user);
+  async register(@Body() user: RegisterUserDto) {
+    const { username, email, password } = user;
+    const createdUser = await this.userService.register(email, username, password);
+
+    if (createdUser === 'ACCOUNT_EXISTS') {
+      throw new HttpException(
+        `Email ${email} has been registered`,
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    return createdUser;
   }
 
-  @Get('hello')
-  @UseGuards(AuthGuard())
-  testAuth() {
-    return 'hello world';
+  @Put('update')
+  @UseGuards(AuthGuard('jwt'))
+  async testAuth(@User() user: UserEntity, @Body() body: UpdateUserDto) {
+    const result = await this.userService.update(user.id, body.username, body.oldPassword, body.newPassword);
+
+    if (result === 'INCORRECT_OLD_PASSWORD') {
+      throw new HttpException(
+        `Old password not match`,
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (result === 'USER_NOT_FOUND') {
+      throw new HttpException(
+        `User not found`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    return result;
   }
 }
